@@ -68,10 +68,17 @@ def main():
     space = tkinter.Canvas(root, width=window_width, height=window_height, bg="black")
     space.pack(fill=tkinter.BOTH, expand=True)
 
+    space.create_text(
+        20, 20, 
+        text="Нажмите ПРОБЕЛ, чтобы скрыть/показать орбиты", 
+        font="Arial-12", 
+        fill="gray", 
+        anchor="w"
+    )
+
     root.bind("<space>", toggle_orbits_by_keypress)
     load_system_automatically("solar_system.txt")
     execution()
     root.mainloop()
-
 if __name__ == "__main__":
     main()
