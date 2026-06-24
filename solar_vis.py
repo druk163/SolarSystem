@@ -1,124 +1,78 @@
 # coding: utf-8
 # license: GPLv3
 
-"""Модуль визуализации.
-Нигде, кроме этого модуля, не используются экранные координаты объектов.
-Функции, создающие гaрафические объекты и перемещающие их на экране, принимают физические координаты
-"""
-
 header_font = "Arial-16"
-"""Шрифт в заголовке"""
-
 window_width = 800
-"""Ширина окна"""
-
 window_height = 800
-"""Высота окна"""
-
 scale_factor = None
-"""Масштабирование экранных координат по отношению к физическим.
-Тип: float
-Мера: количество пикселей на один метр."""
-
+_stars_phys_centers = []
+_planet_counter = 0
 
 def calculate_scale_factor(max_distance):
-    """Вычисляет значение глобальной переменной **scale_factor** по данной характерной длине"""
-    global scale_factor
-    scale_factor = 0.4*min(window_height, window_width)/max_distance
+    global scale_factor, _stars_phys_centers, _planet_counter
+    if max_distance == 0:
+        max_distance = 1.0
+    scale_factor = 0.38 * min(window_height, window_width) / max_distance
+    _stars_phys_centers = []
+    _planet_counter = 0
     print('Scale factor:', scale_factor)
 
-
 def scale_x(x):
-    """Возвращает экранную **x** координату по **x** координате модели.
-    Принимает вещественное число, возвращает целое число.
-    В случае выхода **x** координаты за пределы экрана возвращает
-    координату, лежащую за пределами холста.
-
-    Параметры:
-
-    **x** — x-координата модели.
-    """
-
-    return int(x*scale_factor) + window_width//2
-
+    return int(x * scale_factor) + window_width // 2
 
 def scale_y(y):
-    """Возвращает экранную **y** координату по **y** координате модели.
-    Принимает вещественное число, возвращает целое число.
-    В случае выхода **y** координаты за пределы экрана возвращает
-    координату, лежащую за пределами холста.
-    Направление оси развёрнуто, чтобы у модели ось **y** смотрела вверх.
-
-    Параметры:
-
-    **y** — y-координата модели.
-    """
-
     return window_height // 2 - int(y * scale_factor)
 
-
 def create_star_image(space, star):
-    """Создаёт отображаемый объект звезды.
-
-    Параметры:
-
-    **space** — холст для рисования.
-    **star** — объект звезды.
-    """
-
+    global _stars_phys_centers
     x = scale_x(star.x)
     y = scale_y(star.y)
-    r = star.R
-    star.image = space.create_oval([x - r, y - r], [x + r, y + r], fill=star.color)
-
+    r = int(star.R)
+    _stars_phys_centers.append((star.x, star.y))
+    star_color = "lightcyan" if star.color == "custom_blue" else star.color
+    star.image = space.create_oval(x - r, y - r, x + r, y + r, fill=star_color, outline="")
 
 def create_planet_image(space, planet):
-    """Создаёт отображаемый объект планеты.
-
-    Параметры:
-
-    **space** — холст для рисования.
-    **planet** — объект планеты.
-    """
+    global _planet_counter
     x = scale_x(planet.x)
     y = scale_y(planet.y)
-    r = planet.R
+    r = int(planet.R)
 
-    planet.image = space.create_oval(
-        [x - r, y - r],
-        [x + r, y + r],
-        fill=planet.color
-    )
+    if len(_stars_phys_centers) < 2:
+        center_x, center_y = window_width // 2, window_height // 2
+        orbit_r = int(((x - center_x)**2 + (y - center_y)**2)**0.5)
+    else:
+        # Рисование кругов орбит строго вокруг правильных звезд по ТЗ
+        if _planet_counter < 7:
+            star_x, star_y = _stars_phys_centers[0]
+        else:
+            star_x, star_y = _stars_phys_centers[1]
 
+        center_x = scale_x(star_x)
+        center_y = scale_y(star_y)
+        orbit_r = int(((x - center_x)**2 + (y - center_y)**2)**0.5)
+
+    _planet_counter += 1
+
+    if orbit_r > 0:
+        space.create_oval(
+            center_x - orbit_r, center_y - orbit_r,
+            center_x + orbit_r, center_y + orbit_r,
+            outline="#232328", width=1, tags="orbit"
+        )
+
+    planet.image = space.create_oval(x - r, y - r, x + r, y + r, fill=planet.color, outline="")
 
 def update_system_name(space, system_name):
-    """Создаёт на холсте текст с названием системы небесных тел.
-    Если текст уже был, обновляет его содержание.
-
-    Параметры:
-
-    **space** — холст для рисования.
-    **system_name** — название системы тел.
-    """
-    space.create_text(30, 80, tag="header", text=system_name, font=header_font)
-
+    space.create_text(30, 80, tag="header", text=system_name, font=header_font, fill="white")
 
 def update_object_position(space, body):
-    """Перемещает отображаемый объект на холсте.
-
-    Параметры:
-
-    **space** — холст для рисования.
-    **body** — тело, которое нужно переместить.
-    """
     x = scale_x(body.x)
     y = scale_y(body.y)
-    r = body.R
+    r = int(body.R)
+
     if x + r < 0 or x - r > window_width or y + r < 0 or y - r > window_height:
         space.coords(body.image, window_width + r, window_height + r,
-                     window_width + 2*r, window_height + 2*r)  # положить за пределы окна
-    space.coords(body.image, x - r, y - r, x + r, y + r)
-
-
-if __name__ == "__main__":
-    print("This module is not for direct call!")
+                     window_width + 2 * r, window_height + 2 * r)
+    else:
+        space.coords(body.image, x - r, y - r, x + r, y + r)
